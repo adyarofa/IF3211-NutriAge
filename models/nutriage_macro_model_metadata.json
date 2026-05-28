@@ -1,0 +1,43 @@
+{
+  "created_at": "2026-05-28T16:18:32",
+  "dataset_path": "pipeline\\nutrient_dataset_raw (1).csv",
+  "model_path": "models\\nutriage_macro_model.joblib",
+  "feature_columns": [
+    "age",
+    "gender"
+  ],
+  "target_columns": [
+    "carbohydrate_g",
+    "protein_g",
+    "lipid_g"
+  ],
+  "raw_rows": 264,
+  "clean_rows": 290,
+  "training_rows": 200,
+  "train_rows": 160,
+  "test_rows": 40,
+  "model": "SplineTransformer + Polynomial interaction features + Ridge regression",
+  "smoothing_strategy": {
+    "age_basis": "cubic B-spline",
+    "n_knots": 28,
+    "ridge_alpha": 0.05,
+    "gender_strategy": "one-hot gender with spline interaction features"
+  },
+  "metrics": {
+    "carbohydrate_g": {
+      "mae": 5.541,
+      "rmse": 8.939,
+      "r2": 0.988
+    },
+    "protein_g": {
+      "mae": 0.807,
+      "rmse": 2.44,
+      "r2": 0.956
+    },
+    "lipid_g": {
+      "mae": 0.909,
+      "rmse": 1.657,
+      "r2": 0.98
+    }
+  }
+}

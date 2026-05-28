@@ -9,9 +9,10 @@ import sys, os, base64
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from modules.carbohydrate import calculate_carbohydrate_needs, get_carbohydrate_insight, generate_carbohydrate_data
-from modules.protein import calculate_protein_needs, get_protein_insight, generate_protein_data
-from modules.lipid import calculate_lipid_needs, get_lipid_insight, generate_lipid_data
+from modules.carbohydrate import calculate_carbohydrate_needs, get_carbohydrate_insight
+from modules.protein import calculate_protein_needs, get_protein_insight
+from modules.lipid import calculate_lipid_needs, get_lipid_insight
+from modules.ml_model import generate_model_macro_data, predict_macro_needs
 from utils.helpers import (
     COLORS, MACRO_COLORS, get_age_category, format_number,
     calculate_total_calories, get_calorie_distribution,
@@ -221,7 +222,8 @@ section[data-testid="stSidebar"] {{ display: none !important; width: 0 !importan
 /* ── swatch ── */
 .swatch {{ display: flex; align-items: center; gap: .75rem; margin-bottom: .6rem; }}
 .swatch-box {{ width: 30px; height: 30px; border-radius: 7px; flex-shrink: 0; }}
-.swatch-hex {{ margin-left: auto; font-size: .78rem; color: #AAA; font-family: monospace !important; }}
+.swatch-name {{ font-size: .9rem; color: {C["text"]} !important; -webkit-text-fill-color: {C["text"]} !important; }}
+.swatch-hex {{ margin-left: auto; font-size: .78rem; color: #666 !important; -webkit-text-fill-color: #666 !important; font-family: monospace !important; }}
 
 /* ── colour palette ── */
 .pal-row {{ display: flex; gap: .5rem; margin-bottom: .5rem; }}
@@ -270,15 +272,100 @@ div[data-testid="stHorizontalBlock"]:first-of-type > div:nth-child(n+3) .stButto
     font-size: .95rem !important;
 }}
 
+/* input/select readability across all pages */
+[data-testid="stNumberInput"] input,
+[data-testid="stTextInput"] input,
+[data-testid="stTextArea"] textarea,
+[data-testid="stSelectbox"] div,
+[data-testid="stSelectbox"] span,
+[data-baseweb="select"] div,
+[data-baseweb="select"] span,
+[data-baseweb="popover"] div,
+[role="listbox"] div,
+[role="option"] {{
+    color: {C["text"]} !important;
+    -webkit-text-fill-color: {C["text"]} !important;
+}}
+
+[data-testid="stNumberInput"] input::placeholder,
+[data-testid="stTextInput"] input::placeholder,
+[data-testid="stTextArea"] textarea::placeholder {{
+    color: #777777 !important;
+    -webkit-text-fill-color: #777777 !important;
+    opacity: 1 !important;
+}}
+
+[data-baseweb="select"] svg {{
+    color: {C["text"]} !important;
+    fill: {C["text"]} !important;
+}}
+
+[data-testid="stNumberInput"] button {{
+    background: #2B2D36 !important;
+    color: #FFFFFF !important;
+    -webkit-text-fill-color: #FFFFFF !important;
+    border-color: #2B2D36 !important;
+}}
+
+[data-testid="stNumberInput"] button:hover {{
+    background: #3A3D49 !important;
+    border-color: #3A3D49 !important;
+}}
+
+[data-testid="stNumberInput"] button svg,
+[data-testid="stNumberInput"] button svg path {{
+    color: #FFFFFF !important;
+    fill: #FFFFFF !important;
+    stroke: #FFFFFF !important;
+}}
+
+[data-testid="stNumberInput"] input::selection,
+[data-testid="stTextInput"] input::selection,
+[data-testid="stTextArea"] textarea::selection {{
+    background: #EDEAF6 !important;
+    color: {C["text"]} !important;
+    -webkit-text-fill-color: {C["text"]} !important;
+}}
+
+[data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] label,
+[data-testid="stWidgetLabel"] p,
+label,
+label p {{
+    color: {C["text"]} !important;
+    -webkit-text-fill-color: {C["text"]} !important;
+    font-weight: 600 !important;
+}}
+
 .stTabs [data-baseweb="tab-list"] {{
     background: #EDEAF6; border-radius: 12px; padding: 4px; gap: 4px;
 }}
 .stTabs [data-baseweb="tab"] {{
     border-radius: 9px; font-size: .9rem; font-weight: 500;
     padding: .45rem 1.1rem;
+    color: {C["muted"]} !important;
+    -webkit-text-fill-color: {C["muted"]} !important;
+}}
+.stTabs [data-baseweb="tab"] p,
+.stTabs [data-baseweb="tab"] span,
+.stTabs [data-baseweb="tab"] div {{
+    color: {C["muted"]} !important;
+    -webkit-text-fill-color: {C["muted"]} !important;
+}}
+.stTabs [data-baseweb="tab"]:hover p,
+.stTabs [data-baseweb="tab"]:hover span,
+.stTabs [data-baseweb="tab"]:hover div {{
+    color: {C["protein"]} !important;
+    -webkit-text-fill-color: {C["protein"]} !important;
 }}
 .stTabs [aria-selected="true"] {{
     background: {C["surface"]} !important; font-weight: 700 !important;
+}}
+.stTabs [aria-selected="true"] p,
+.stTabs [aria-selected="true"] span,
+.stTabs [aria-selected="true"] div {{
+    color: {C["protein"]} !important;
+    -webkit-text-fill-color: {C["protein"]} !important;
 }}
 
 /* ── footer ── */
@@ -464,21 +551,31 @@ elif page == "Simulasi Nutrisi":
     st.markdown('<div class="div"></div>', unsafe_allow_html=True)
 
     if hitung or "hasil_karbo" in st.session_state:
-        hk = calculate_carbohydrate_needs(usia, jenis_kelamin)
-        hp = calculate_protein_needs(usia, jenis_kelamin)
-        hl = calculate_lipid_needs(usia, jenis_kelamin)
+        try:
+            ml_result = predict_macro_needs(usia, jenis_kelamin)
+            hk = ml_result["karbohidrat"]
+            hp = ml_result["protein"]
+            hl = ml_result["lipid"]
+            result_source = "Model ML"
+        except Exception:
+            hk = calculate_carbohydrate_needs(usia, jenis_kelamin)
+            hp = calculate_protein_needs(usia, jenis_kelamin)
+            hl = calculate_lipid_needs(usia, jenis_kelamin)
+            result_source = "Kalkulator fallback"
         st.session_state.update(hasil_karbo=hk, hasil_protein=hp, hasil_lipid=hl,
-                                usia=usia, jenis_kelamin=jenis_kelamin)
+                                usia=usia, jenis_kelamin=jenis_kelamin,
+                                result_source=result_source)
 
         cat = get_age_category(usia)
         total_kal = calculate_total_calories(hk["kebutuhan_gram"], hp["kebutuhan_gram"], hl["kebutuhan_gram"])
-        total_g   = hk["kebutuhan_gram"] + hp["kebutuhan_gram"] + hl["kebutuhan_gram"]
+        total_g   = round(hk["kebutuhan_gram"] + hp["kebutuhan_gram"] + hl["kebutuhan_gram"], 1)
 
         st.markdown(
             f'<p class="sec">Hasil untuk {jenis_kelamin}, {usia} tahun &nbsp;—&nbsp; '
             f'<span style="color:{C["purple"]}">{cat}</span></p>',
             unsafe_allow_html=True
         )
+        st.caption(f"Sumber: {result_source}")
 
         rc1, rc2, rc3, rc4 = st.columns(4, gap="medium")
         rcards = [
@@ -528,9 +625,7 @@ elif page == "Simulasi Nutrisi":
         st.markdown('<div class="div"></div>', unsafe_allow_html=True)
         st.markdown('<p class="sec">Grafik Kebutuhan Nutrisi Berdasarkan Usia</p>', unsafe_allow_html=True)
 
-        df_k = generate_carbohydrate_data()
-        df_p = generate_protein_data()
-        df_l = generate_lipid_data()
+        df_k, df_p, df_l, _graph_source = generate_model_macro_data(genders=[jenis_kelamin])
         gk = df_k[df_k["Jenis Kelamin"] == jenis_kelamin]
         gp = df_p[df_p["Jenis Kelamin"] == jenis_kelamin]
         gl = df_l[df_l["Jenis Kelamin"] == jenis_kelamin]
@@ -606,9 +701,8 @@ elif page == "Simulasi Nutrisi":
 elif page == "Analisis Data":
     hero("Analisis Data", "Eksplorasi kebutuhan nutrisi berdasarkan usia dan jenis kelamin", show_logo=False)
 
-    df_k = generate_carbohydrate_data()
-    df_p = generate_protein_data()
-    df_l = generate_lipid_data()
+    df_k, df_p, df_l, analysis_source = generate_model_macro_data()
+    st.caption(f"Sumber: {analysis_source}")
 
     st.markdown('<p class="sec">Filter Data</p>', unsafe_allow_html=True)
     af1, af2 = st.columns(2, gap="large")
@@ -700,7 +794,7 @@ elif page == "Tentang":
         macros_sw = "".join(
             f'<div class="swatch">'
             f'<div class="swatch-box" style="background:{c};"></div>'
-            f'<span style="font-size:.9rem;">{n}</span>'
+            f'<span class="swatch-name">{n}</span>'
             f'<span class="swatch-hex">{c}</span></div>'
             for n, c in [("Karbohidrat", C["karbo"]),
                          ("Protein",     C["protein"]),
