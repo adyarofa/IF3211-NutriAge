@@ -1,3 +1,4 @@
+import re
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -281,6 +282,21 @@ div[data-testid="stHorizontalBlock"]:first-of-type > div:nth-child(n+3) .stButto
 </style>
 """, unsafe_allow_html=True)
 
+def hex_to_rgba(hex_color: str, alpha: float) -> str:
+    h = hex_color.lstrip('#')
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f'rgba({r},{g},{b},{alpha})'
+
+
+def md_to_html(text: str) -> str:
+    text = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', text.strip())
+    lines = [
+        f'&nbsp;&nbsp;• {l.strip()[2:]}' if l.strip().startswith('- ') else l.strip()
+        for l in text.split('\n') if l.strip()
+    ]
+    return '<br>'.join(lines)
+
+
 # ══════════════════════════════════════════════════════════════
 # STATE
 # ══════════════════════════════════════════════════════════════
@@ -480,7 +496,7 @@ elif page == "Simulasi Nutrisi":
         with t1:
             st.markdown('<p class="sec">Tabel Ringkasan</p>', unsafe_allow_html=True)
             df_sum = create_summary_dataframe(hk, hp, hl)
-            st.dataframe(df_sum, hide_index=True, width="stretch")
+            st.dataframe(df_sum, hide_index=True, use_container_width=True)
 
         with t2:
             st.markdown('<p class="sec">Distribusi Kalori</p>', unsafe_allow_html=True)
@@ -499,7 +515,7 @@ elif page == "Simulasi Nutrisi":
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(family="Plus Jakarta Sans")
             )
-            st.plotly_chart(fig_pie, width="stretch")
+            st.plotly_chart(fig_pie, use_container_width=True)
 
         st.markdown('<div class="div"></div>', unsafe_allow_html=True)
         st.markdown('<p class="sec">Grafik Kebutuhan Nutrisi Berdasarkan Usia</p>', unsafe_allow_html=True)
@@ -547,7 +563,7 @@ elif page == "Simulasi Nutrisi":
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
             margin=dict(t=40, b=40, l=10, r=10)
         )
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
 
         st.markdown('<div class="div"></div>', unsafe_allow_html=True)
         st.markdown('<p class="sec">Insight Biologis</p>', unsafe_allow_html=True)
@@ -562,7 +578,7 @@ elif page == "Simulasi Nutrisi":
         ):
             with col:
                 st.markdown(
-                    f'<div class="icard" style="border-color:{clr};">{text}</div>',
+                    f'<div class="icard" style="border-color:{clr};">{md_to_html(text)}</div>',
                     unsafe_allow_html=True
                 )
 
@@ -630,7 +646,7 @@ elif page == "Analisis Data":
                 mode="lines", name=f"Lipid ({g})",
                 line=dict(color=C["lipid"], dash=ls, width=2.5)))
         fig_all.update_layout(**base_layout)
-        st.plotly_chart(fig_all, width="stretch")
+        st.plotly_chart(fig_all, use_container_width=True)
 
     for tab, df_f, col_name, clr in [
         (tab2, fk, "Karbohidrat (g)", C["karbo"]),
@@ -639,13 +655,13 @@ elif page == "Analisis Data":
     ]:
         with tab:
             fig_t = px.line(df_f, x="Usia", y=col_name, color="Jenis Kelamin",
-                            color_discrete_map={"Laki-laki": clr, "Perempuan": clr + "99"})
+                            color_discrete_map={"Laki-laki": clr, "Perempuan": hex_to_rgba(clr, 0.5)})
             fig_t.update_layout(**{**base_layout, "yaxis": {**base_layout["yaxis"], "title": col_name}})
-            st.plotly_chart(fig_t, width="stretch")
+            st.plotly_chart(fig_t, use_container_width=True)
             st.markdown('<p class="sec">Statistik</p>', unsafe_allow_html=True)
             st.dataframe(
                 df_f.groupby("Jenis Kelamin")[col_name].describe().round(2),
-                width="stretch"
+                use_container_width=True
             )
 
 
@@ -655,56 +671,23 @@ elif page == "Analisis Data":
 elif page == "Tentang":
     hero("Tentang NutriAge", "Informasi aplikasi, referensi ilmiah, dan teknologi")
 
-    ab1, ab2 = st.columns([3, 2], gap="large")
-
-    with ab1:
+    # ── Row 1: Deskripsi + Warna ──────────────────────────────
+    r1a, r1b = st.columns([3, 2], gap="large")
+    with r1a:
         st.markdown('<p class="sec">Deskripsi</p>', unsafe_allow_html=True)
         st.markdown("""
         <div class="card">
             <p style="font-size:.95rem;line-height:1.75;color:#444;margin:0;">
-            <strong>NutriAge</strong> adalah aplikasi simulasi berbasis web untuk membantu pengguna
-            memahami kebutuhan nutrisi makromolekul berdasarkan usia dan jenis kelamin.
-            Dikembangkan sebagai alat edukasi untuk mendukung <em>Healthy Aging</em>.
+            <strong>NutriAge</strong> adalah aplikasi simulasi berbasis web yang mensimulasikan
+            kebutuhan nutrisi makromolekul (karbohidrat, lipid, dan protein) berdasarkan usia
+            dan jenis kelamin. Dikembangkan sebagai alat edukasi komputasional untuk mendukung
+            pemahaman tentang <em>Healthy Aging</em> — proses menua secara sehat dengan asupan
+            nutrisi yang tepat di setiap tahapan kehidupan.
             </p>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown('<p class="sec" style="margin-top:1rem;">Tujuan</p>', unsafe_allow_html=True)
-        goals = [
-            "Memberikan informasi kebutuhan nutrisi makromolekul yang akurat",
-            "Meningkatkan kesadaran tentang pentingnya nutrisi sesuai usia",
-            "Mendukung gaya hidup sehat melalui edukasi nutrisi",
-            "Menyajikan data nutrisi dalam visualisasi yang mudah dipahami",
-        ]
-        items = "".join(f"<li>{g}</li>" for g in goals)
-        st.markdown(f'<div class="card"><ol class="steps">{items}</ol></div>', unsafe_allow_html=True)
-
-        st.markdown('<p class="sec" style="margin-top:1rem;">Referensi Ilmiah</p>', unsafe_allow_html=True)
-        st.markdown("""
-        <div class="card">
-            <p style="font-size:.9rem;line-height:1.8;color:#444;margin:0;">
-            <strong>Angka Kecukupan Gizi (AKG)</strong> — Kementerian Kesehatan RI<br>
-            <strong>WHO Guidelines</strong> — Kebutuhan nutrisi per kelompok usia<br>
-            Literatur ilmiah terkait nutrisi dan metabolisme
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown('<p class="sec" style="margin-top:1rem;">Teknologi</p>', unsafe_allow_html=True)
-        tech_cols = st.columns(4, gap="small")
-        for col, (name, role) in zip(tech_cols, [
-            ("Streamlit", "Frontend"), ("Plotly", "Visualisasi"),
-            ("Pandas & NumPy", "Data"), ("Python 3.9+", "Language")
-        ]):
-            with col:
-                st.markdown(
-                    f'<div class="scard">'
-                    f'<div style="font-size:.95rem;font-weight:700;color:#333;">{name}</div>'
-                    f'<div class="scard-lbl">{role}</div></div>',
-                    unsafe_allow_html=True
-                )
-
-    with ab2:
+    with r1b:
         st.markdown('<p class="sec">Warna Makromolekul</p>', unsafe_allow_html=True)
         macros_sw = "".join(
             f'<div class="swatch">'
@@ -716,6 +699,78 @@ elif page == "Tentang":
                          ("Lipid",       C["lipid"])]
         )
         st.markdown(f'<div class="card">{macros_sw}</div>', unsafe_allow_html=True)
+
+    # ── Row 2: Tujuan + Referensi ─────────────────────────────
+    st.markdown('<div class="div"></div>', unsafe_allow_html=True)
+    r2a, r2b = st.columns([3, 2], gap="large")
+
+    with r2a:
+        st.markdown('<p class="sec">Tujuan</p>', unsafe_allow_html=True)
+        goals = [
+            "Mensimulasikan kebutuhan nutrisi makromolekul berdasarkan usia dan jenis kelamin",
+            "Memvisualisasikan perubahan kebutuhan nutrisi sepanjang rentang usia",
+            "Meningkatkan kesadaran tentang pentingnya nutrisi yang tepat sesuai tahap kehidupan",
+            "Mendukung gaya hidup sehat melalui edukasi berbasis data ilmiah",
+        ]
+        items = "".join(f"<li>{g}</li>" for g in goals)
+        st.markdown(f'<div class="card"><ol class="steps">{items}</ol></div>', unsafe_allow_html=True)
+
+    with r2b:
+        st.markdown('<p class="sec">Referensi Ilmiah</p>', unsafe_allow_html=True)
+        refs = [
+            ("Kemenkes RI, 2019", "Peraturan Menteri Kesehatan No. 28 Tahun 2019 tentang Angka Kecukupan Gizi (AKG) untuk Masyarakat Indonesia."),
+            ("WHO, 2003", "Diet, Nutrition and the Prevention of Chronic Diseases. WHO Technical Report Series, No. 916. Geneva: WHO."),
+            ("Institute of Medicine, 2005", "Dietary Reference Intakes for Energy, Carbohydrate, Fiber, Fat, Fatty Acids, Protein, and Amino Acids. National Academies Press."),
+            ("Gropper & Smith, 2013", "Advanced Nutrition and Human Metabolism (6th ed.). Wadsworth, Cengage Learning."),
+        ]
+        ref_html = "".join(
+            f'<div style="padding:.6rem 0;border-bottom:1px solid #F0F0F0;">'
+            f'<span style="font-size:.8rem;font-weight:700;color:{C["purple"]};">[{r[0]}]</span><br>'
+            f'<span style="font-size:.82rem;color:#555;line-height:1.5;">{r[1]}</span></div>'
+            for r in refs
+        )
+        st.markdown(f'<div class="card">{ref_html}</div>', unsafe_allow_html=True)
+
+    # ── Row 3: Teknologi ──────────────────────────────────────
+    st.markdown('<div class="div"></div>', unsafe_allow_html=True)
+    st.markdown('<p class="sec">Teknologi</p>', unsafe_allow_html=True)
+    tech_cols = st.columns(4, gap="small")
+    for col, (name, role) in zip(tech_cols, [
+        ("Streamlit", "Web Framework"), ("Plotly", "Visualisasi Interaktif"),
+        ("Pandas & NumPy", "Pengolahan Data"), ("Python 3.9+", "Bahasa Pemrograman")
+    ]):
+        with col:
+            st.markdown(
+                f'<div class="scard">'
+                f'<div style="font-size:.95rem;font-weight:700;color:#333;">{name}</div>'
+                f'<div class="scard-lbl">{role}</div></div>',
+                unsafe_allow_html=True
+            )
+
+    # ── Row 4: Tim ────────────────────────────────────────────
+    st.markdown('<div class="div"></div>', unsafe_allow_html=True)
+    st.markdown('<p class="sec">Tim Pengembang</p>', unsafe_allow_html=True)
+    team = [
+        ("Samuel Chris Michael\nBagasta Simanjuntak", "18223011", "Lipid & Backend"),
+        ("Audy Alicia Renatha\nTirayoh", "18223097", "Integrasi & UI/Styling"),
+        ("Carlen Asadel Axelle", "18223017", "Karbohidrat & Form Input"),
+        ("Allodya Qonita Arrofa", "18223054", "Protein & Output Page"),
+    ]
+    tm_cols = st.columns(4, gap="medium")
+    for col, (name, nim, role) in zip(tm_cols, team):
+        with col:
+            st.markdown(
+                f'<div class="scard" style="text-align:left;">'
+                f'<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,{C["purple"]},{C["protein"]});'
+                f'display:flex;align-items:center;justify-content:center;'
+                f'font-size:.9rem;font-weight:800;color:#fff;margin-bottom:.75rem;">'
+                f'{name[0]}</div>'
+                f'<div style="font-size:.88rem;font-weight:700;color:#333;line-height:1.4;">{name.replace(chr(10), "<br>")}</div>'
+                f'<div style="font-size:.78rem;color:{C["purple"]};font-weight:600;margin:.25rem 0;">{nim}</div>'
+                f'<div style="font-size:.78rem;color:#888;">{role}</div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
 
 
 # ══════════════════════════════════════════════════════════════
