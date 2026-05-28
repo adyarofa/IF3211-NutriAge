@@ -55,12 +55,20 @@ st.markdown(f"""
 }}
 
 /* ── reset streamlit chrome ── */
+html, body {{ overflow-x: hidden; }}
 html, body, [class*="css"] {{ font-family: 'Plus Jakarta Sans', sans-serif !important; }}
 #MainMenu, footer, header {{ visibility: hidden; }}
 [data-testid="stToolbar"], [data-testid="stDecoration"],
 [data-testid="stSidebarCollapsedControl"],
-section[data-testid="stSidebar"] {{ display: none !important; }}
-.block-container {{ padding: 2rem 3rem 4rem 3rem !important; max-width: 1400px !important; }}
+[data-testid="stSidebarUserContent"],
+[data-testid="collapsedControl"],
+section[data-testid="stSidebar"] {{ display: none !important; width: 0 !important; }}
+/* paksa scrollbar selalu ada di scroll container Streamlit */
+[data-testid="stAppViewContainer"] {{ overflow-y: scroll !important; }}
+.stApp {{ overflow-x: hidden; }}
+.stApp > .main, [data-testid="stMain"] {{ margin-left: 0 !important; }}
+/* min-height supaya semua page selalu cukup tinggi → scrollbar tidak muncul-hilang */
+.block-container {{ padding: 2rem 3rem 4rem 3rem !important; max-width: 1400px !important; min-height: 110vh !important; }}
 
 /* ── page background ── */
 .stApp {{ background: {C["bg"]}; }}

@@ -28,11 +28,16 @@ IF3211-NutriAge/
 ├── app.py                  # Entry point aplikasi Streamlit
 ├── requirements.txt        # Dependensi Python
 ├── modules/
+│   ├── __init__.py         # Ekspor semua modul
 │   ├── carbohydrate.py     # Modul perhitungan karbohidrat
 │   ├── protein.py          # Modul perhitungan protein
-│   └── lipid.py            # Modul perhitungan lipid
+│   ├── lipid.py            # Modul perhitungan lipid
+│   └── integration.py      # Pipeline terpadu & combined DataFrame
 ├── utils/
+│   ├── __init__.py
 │   └── helpers.py          # Fungsi utilitas dan konstanta warna
+├── data/
+│   └── __init__.py
 └── public/
     ├── logo.png            # Logo ikon
     └── logo-name.png       # Logo dengan nama
